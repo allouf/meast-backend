@@ -1,0 +1,306 @@
+{
+  "info": {
+    "_postman_id": "services-boost-campaigns-collection",
+    "name": "Services — Boost plans & campaigns",
+    "description": "Boost inventory (admin), provider purchase / extend (records plan price on campaign; payment out of band), moderation/admin termination (notional pro‑rata refund in logs/response only), and public browse ranking snapshot.\n\n**Variables**\n- `{{base_url}}` — APIs under `/api/v1` (provider + public browse).\n- `{{base_url_admin}}` — `/api/v1/admin` (admin JWT).\n- Tokens: provider uses `access_token`; admin uses `access_token_admin`.\n- IDs: `service_offer_id`, `boost_plan_id`, `boost_campaign_id`.\n\n**Middleware**\n- Provider boost routes: `auth:api`, `validate.device`, `service.profile.provider`.\n- Admin routes: `auth:admin`, `role:admin`.\n- Public `/services`: no auth (standard `api` middleware only).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost/api/v1" },
+    { "key": "base_url_admin", "value": "http://localhost/api/v1/admin" },
+    { "key": "access_token", "value": "" },
+    { "key": "access_token_admin", "value": "" },
+    { "key": "service_offer_id", "value": "1" },
+    { "key": "boost_plan_id", "value": "1" },
+    { "key": "boost_campaign_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Public — Browse services (ranking snapshot)",
+      "description": "`meta.ranking_snapshot_at` freezes boost evaluation for that response. Optional `viewer_country_code` filters to providers in that ISO-2 country.",
+      "item": [
+        {
+          "name": "List services (boost ranking)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/services?page=1&per_page=15&viewer_country_code=&category_id=&search=&sort=newest",
+              "host": ["{{base_url}}"],
+              "path": ["services"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "viewer_country_code", "value": "", "disabled": true, "description": "ISO 3166-1 alpha-2 (e.g. SA)" },
+                { "key": "category_id", "value": "", "disabled": true },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "sort", "value": "newest", "description": "newest|oldest|lowest_price|highest_price|..." },
+                { "key": "delivery_model", "value": "", "disabled": true },
+                { "key": "type", "value": "", "disabled": true },
+                { "key": "min_price", "value": "", "disabled": true },
+                { "key": "max_price", "value": "", "disabled": true },
+                { "key": "min_rating", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Each card may include `is_sponsored`, `boost_score`, `ranking_boost_applied`, nested `ranking` (base relevance / effective multiplier). See module guide MD."
+          }
+        },
+        {
+          "name": "Show service detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/services/show/{{service_offer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["services", "show", "{{service_offer_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Provider — Boost purchase & my campaigns",
+      "description": "Requires completed provider profile. Purchase creates or stacks an ACTIVE campaign and stores resolved plan price on the row (no wallet debit in API). Plan duration must be 3 / 7 / 30 days; category may be `boost_prohibited`; listing must be active + published.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "List my boost campaigns",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "url": {
+              "raw": "{{base_url}}/boost-campaigns?page=1&per_page=15&status=",
+              "host": ["{{base_url}}"],
+              "path": ["boost-campaigns"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "status", "value": "", "disabled": true, "description": "PENDING|ACTIVE|PAUSED|TERMINATED|EXPIRED" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Purchase / extend boost",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_offer_id\": {{service_offer_id}},\n  \"boost_plan_id\": {{boost_plan_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/boost-campaigns",
+              "host": ["{{base_url}}"],
+              "path": ["boost-campaigns"]
+            },
+            "description": "Starts ACTIVE campaign or stacks by extending `end_at` when an ACTIVE window exists for same offer."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Boost plans (inventory)",
+      "description": "CRUD pricing, duration_days, targeting JSON (`search_rank_multiplier`, `show_sponsored_badge`), country variants.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "List boost plans",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "url": { "raw": "{{base_url_admin}}/boost-plans?per_page=15&search=&is_active=", "host": ["{{base_url_admin}}"], "path": ["boost-plans"], "query": [{ "key": "per_page", "value": "15" }, { "key": "search", "value": "", "disabled": true }, { "key": "is_active", "value": "", "disabled": true }] }
+          }
+        },
+        {
+          "name": "Show boost plan",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "url": { "raw": "{{base_url_admin}}/boost-plans/show/{{boost_plan_id}}", "host": ["{{base_url_admin}}"], "path": ["boost-plans", "show", "{{boost_plan_id}}"] }
+          }
+        },
+        {
+          "name": "Create boost plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"7 Day Boost\",\n  \"base_price\": \"49.99\",\n  \"currency\": \"USD\",\n  \"duration_days\": 7,\n  \"targeting\": {\n    \"search_rank_multiplier\": 1.35,\n    \"show_sponsored_badge\": true\n  },\n  \"is_active\": true,\n  \"variants\": [\n    {\n      \"country_code\": \"SA\",\n      \"price\": \"199.99\",\n      \"currency\": \"SAR\",\n      \"is_active\": true\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url_admin}}/boost-plans/create", "host": ["{{base_url_admin}}"], "path": ["boost-plans", "create"] }
+          }
+        },
+        {
+          "name": "Update boost plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"7 Day Boost (updated)\",\n  \"base_price\": \"49.99\",\n  \"currency\": \"USD\",\n  \"duration_days\": 7,\n  \"targeting\": {\n    \"search_rank_multiplier\": 1.3,\n    \"show_sponsored_badge\": true\n  },\n  \"is_active\": true,\n  \"variants\": []\n}"
+            },
+            "url": { "raw": "{{base_url_admin}}/boost-plans/update/{{boost_plan_id}}", "host": ["{{base_url_admin}}"], "path": ["boost-plans", "update", "{{boost_plan_id}}"] }
+          }
+        },
+        {
+          "name": "Toggle boost plan active",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "url": { "raw": "{{base_url_admin}}/boost-plans/toggle-status/{{boost_plan_id}}", "host": ["{{base_url_admin}}"], "path": ["boost-plans", "toggle-status", "{{boost_plan_id}}"] }
+          }
+        },
+        {
+          "name": "Delete boost plan",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "url": { "raw": "{{base_url_admin}}/boost-plans/delete/{{boost_plan_id}}", "host": ["{{base_url_admin}}"], "path": ["boost-plans", "delete", "{{boost_plan_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Boost campaigns & audit",
+      "description": "Pause / terminate campaigns. Terminate sets TERMINATED and returns/logs pro‑rata `notional_refund` (informational; no automatic wallet credit). Actions append `boost_campaign_logs` audit rows (`admin_id` set except moderation-driven terminations).",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "List boost campaigns",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "url": {
+              "raw": "{{base_url_admin}}/boost-campaigns?page=1&per_page=15&status=&active_window_only=&search=&provider_id=&service_offer_id=",
+              "host": ["{{base_url_admin}}"],
+              "path": ["boost-campaigns"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "active_window_only", "value": "", "disabled": true, "description": "1 to filter ACTIVE and in-window" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "provider_id", "value": "", "disabled": true },
+                { "key": "service_offer_id", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show boost campaign (+ logs)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "url": {
+              "raw": "{{base_url_admin}}/boost-campaigns/show/{{boost_campaign_id}}",
+              "host": ["{{base_url_admin}}"],
+              "path": ["boost-campaigns", "show", "{{boost_campaign_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Pause boost campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Policy review\"\n}" },
+            "url": {
+              "raw": "{{base_url_admin}}/boost-campaigns/{{boost_campaign_id}}/pause",
+              "host": ["{{base_url_admin}}"],
+              "path": ["boost-campaigns", "{{boost_campaign_id}}", "pause"]
+            }
+          }
+        },
+        {
+          "name": "Terminate boost campaign (notional refund in body)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Misleading listing\"\n}" },
+            "url": {
+              "raw": "{{base_url_admin}}/boost-campaigns/{{boost_campaign_id}}/terminate",
+              "host": ["{{base_url_admin}}"],
+              "path": ["boost-campaigns", "{{boost_campaign_id}}", "terminate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Category boost policy",
+      "description": "Toggle `boost_prohibited` on a service category to block new purchases.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "Update category (boost_prohibited)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": { \"en\": \"Category\", \"ar\": \"\" },\n  \"boost_prohibited\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url_admin}}/service-categories/update/1",
+              "host": ["{{base_url_admin}}"],
+              "path": ["service-categories", "update", "1"]
+            },
+            "description": "Supply full valid payload per `ServiceCategoryRequest`; only example fields shown."
+          }
+        }
+      ]
+    }
+  ]
+}

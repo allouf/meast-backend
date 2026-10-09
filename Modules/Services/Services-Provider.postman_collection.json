@@ -1,0 +1,606 @@
+{
+  "info": {
+    "_postman_id": "services-provider-collection",
+    "name": "Services - Provider & Admin",
+    "description": "Services module APIs.\n\n**Provider (user):** Provider profile, service categories list, service offers CRUD.\nSet `base_url` and `access_token`.\n\n**Admin:** Providers (list, show), Service categories CRUD + toggle status.\nSet `base_url_admin` and `access_token_admin`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://apiuat.middleeastcommerce.net/api/v1" },
+    { "key": "access_token", "value": "" },
+    { "key": "base_url_admin", "value": "http://apiuat.middleeastcommerce.net/api/v1/admin" },
+    { "key": "access_token_admin", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Provider Profile",
+      "description": "Create, get, update provider profile. Auth: user token.",
+      "item": [
+        {
+          "name": "Create provider profile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "type", "value": "individual", "description": "individual | company", "type": "text" },
+                { "key": "display_name", "value": "John Provider", "type": "text" },
+                { "key": "country_code", "value": "SY", "type": "text" },
+                { "key": "region", "value": "Damascus", "type": "text" },
+                { "key": "bio", "value": "Experienced service provider.", "type": "text" },
+                { "key": "verification_notes", "value": "", "type": "text" },
+                { "key": "language_ids[]", "value": "1", "description": "IDs from GET /languages", "type": "text" },
+                { "key": "identity_document", "description": "PDF or image, max 5MB", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/service-provider", "host": ["{{base_url}}"], "path": ["service-provider"] },
+            "description": "Requires: type, display_name."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url}}/service-provider", "host": ["{{base_url}}"], "path": ["service-provider"] } },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Provider profile created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"type\": \"individual\",\n    \"display_name\": \"John Provider\",\n    \"country_code\": \"SY\",\n    \"region\": \"Damascus\",\n    \"bio\": \"Experienced service provider.\",\n    \"identity_document\": null,\n    \"verification_notes\": null,\n    \"languages\": [{\"id\": 1, \"code\": \"en\", \"name\": \"English\"}],\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:00:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get my provider profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/service-provider", "host": ["{{base_url}}"], "path": ["service-provider"] },
+            "description": "Get authenticated user's provider profile."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/service-provider", "host": ["{{base_url}}"], "path": ["service-provider"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Provider profile retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"type\": \"individual\",\n    \"display_name\": \"John Provider\",\n    \"country_code\": \"SY\",\n    \"region\": \"Damascus\",\n    \"bio\": \"Experienced service provider.\",\n    \"identity_document\": null,\n    \"verification_notes\": null,\n    \"languages\": [{\"id\": 1, \"code\": \"en\", \"name\": \"English\"}],\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:00:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update provider profile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "type", "value": "company", "type": "text" },
+                { "key": "display_name", "value": "Updated Display Name", "type": "text" },
+                { "key": "country_code", "value": "SY", "type": "text" },
+                { "key": "region", "value": "Damascus", "type": "text" },
+                { "key": "bio", "value": "Updated bio.", "type": "text" },
+                { "key": "verification_notes", "value": "", "type": "text" },
+                { "key": "language_ids[]", "value": "1", "type": "text" },
+                { "key": "identity_document", "description": "New file (optional)", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/service-provider/update", "host": ["{{base_url}}"], "path": ["service-provider", "update"] },
+            "description": "All fields optional."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url}}/service-provider/update", "host": ["{{base_url}}"], "path": ["service-provider", "update"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Provider profile updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"type\": \"company\",\n    \"display_name\": \"Updated Display Name\",\n    \"country_code\": \"SY\",\n    \"region\": \"Damascus\",\n    \"bio\": \"Updated bio.\",\n    \"identity_document\": null,\n    \"verification_notes\": null,\n    \"languages\": [{\"id\": 1, \"code\": \"en\", \"name\": \"English\"}],\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:05:00\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Service Categories (Provider)",
+      "description": "List active categories for provider (e.g. when creating an offer). Auth: user token.",
+      "item": [
+        {
+          "name": "List service categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/service-categories", "host": ["{{base_url}}"], "path": ["service-categories"] },
+            "description": "Active categories only. name: {en, ar}, slug."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/service-categories", "host": ["{{base_url}}"], "path": ["service-categories"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Service categories retrieved successfully.\",\n  \"data\": [\n    {\"id\": 1, \"name\": {\"en\": \"Consulting\", \"ar\": \"استشارات\"}, \"slug\": \"consulting\"},\n    {\"id\": 2, \"name\": {\"en\": \"Design\", \"ar\": \"تصميم\"}, \"slug\": \"design\"}\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Service Offers",
+      "description": "Provider service offers CRUD. type: hourly|fixed_price|project_based|retainer|package|subscription. delivery_model: remote|on_site|hybrid|in_person.",
+      "item": [
+        {
+          "name": "List my service offers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/service-offers?per_page=15",
+              "host": ["{{base_url}}"],
+              "path": ["service-offers"],
+              "query": [
+                { "key": "per_page", "value": "15" },
+                { "key": "is_active", "value": "", "disabled": true },
+                { "key": "service_category_id", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Query: per_page, is_active, service_category_id."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/service-offers?per_page=15", "host": ["{{base_url}}"], "path": ["service-offers"], "query": [{ "key": "per_page", "value": "15" }] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Service offers retrieved successfully.\",\n  \"data\": {\n    \"offers\": [\n      {\n        \"id\": 1,\n        \"service_provider_id\": 1,\n        \"service_category_id\": 1,\n        \"title\": {\"en\": \"My Service\", \"ar\": \"خدمتي\"},\n        \"type\": \"fixed_price\",\n        \"delivery_model\": \"remote\",\n        \"cover\": null,\n        \"description\": {\"en\": \"Description\", \"ar\": \"وصف\"},\n        \"plans\": [{\"id\": 1, \"title\": \"Basic\", \"price\": 100, \"currency\": \"USD\", \"estimated_delivery_time\": \"3 days\", \"revision_window\": \"7 days\", \"number_of_revisions\": 2, \"revision_scope_rules\": \"Minor changes only\"}],\n        \"faqs\": [{\"id\": 1, \"question\": \"Q1?\", \"answer\": \"A1\"}],\n        \"available_slots\": [{\"day\": \"sunday\", \"slots\": [{\"id\": 1, \"start_time\": \"22:00\", \"end_time\": \"03:00\"}]}],\n        \"is_active\": true,\n        \"sort_order\": 0,\n        \"created_at\": \"2026-02-26 10:00:00\",\n        \"updated_at\": \"2026-02-26 10:00:00\"\n      }\n    ],\n    \"meta\": {\n      \"current_page\": 1,\n      \"last_page\": 1,\n      \"per_page\": 15,\n      \"total\": 1\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Show service offer",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/service-offers/show/1", "host": ["{{base_url}}"], "path": ["service-offers", "show", "1"] },
+            "description": "Replace 1 with offer id."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/service-offers/show/1", "host": ["{{base_url}}"], "path": ["service-offers", "show", "1"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Service offers retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"service_provider_id\": 1,\n    \"service_category_id\": 1,\n    \"title\": {\"en\": \"My Service\", \"ar\": \"خدمتي\"},\n    \"type\": \"fixed_price\",\n    \"delivery_model\": \"remote\",\n    \"cover\": null,\n    \"description\": {\"en\": \"Description\", \"ar\": \"وصف\"},\n    \"plans\": [{\"id\": 1, \"title\": \"Basic\", \"price\": 100, \"currency\": \"USD\", \"estimated_delivery_time\": \"3 days\", \"revision_window\": \"7 days\", \"number_of_revisions\": 2, \"revision_scope_rules\": \"Minor changes only\"}],\n    \"faqs\": [{\"id\": 1, \"question\": \"Q1?\", \"answer\": \"A1\"}],\n    \"available_slots\": [{\"day\": \"sunday\", \"slots\": [{\"id\": 1, \"start_time\": \"22:00\", \"end_time\": \"03:00\"}]}],\n    \"is_active\": true,\n    \"sort_order\": 0,\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:00:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create service offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": { \"en\": \"My Service\", \"ar\": \"خدمتي\" },\n  \"service_category_id\": 1,\n  \"type\": \"fixed_price\",\n  \"delivery_model\": \"remote\",\n  \"description\": { \"en\": \"Description\", \"ar\": \"وصف\" },\n  \"plans\": [\n    { \"title\": \"Basic\", \"price\": 100, \"currency\": \"USD\", \"estimated_delivery_time\": \"3 days\", \"revision_window\": \"7 days\", \"number_of_revisions\": 2, \"revision_scope_rules\": \"Minor changes only\" }\n  ],\n  \"faqs\": [\n    { \"question\": \"Q1?\", \"answer\": \"A1\" }\n  ],\n  \"available_slots\": [\n    { \"day\": \"sunday\", \"slots\": [ { \"start_time\": \"22:00\", \"end_time\": \"03:00\" } ] }\n  ],\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+            },
+            "url": { "raw": "{{base_url}}/service-offers", "host": ["{{base_url}}"], "path": ["service-offers"] },
+            "description": "title/description: {en, ar}. plans, faqs, available_slots optional. For cover use multipart/form-data."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url}}/service-offers", "host": ["{{base_url}}"], "path": ["service-offers"] } },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Service offer created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"service_provider_id\": 1,\n    \"service_category_id\": 1,\n    \"title\": {\"en\": \"My Service\", \"ar\": \"خدمتي\"},\n    \"type\": \"fixed_price\",\n    \"delivery_model\": \"remote\",\n    \"cover\": null,\n    \"description\": {\"en\": \"Description\", \"ar\": \"وصف\"},\n    \"plans\": [{\"id\": 1, \"title\": \"Basic\", \"price\": 100, \"currency\": \"USD\", \"estimated_delivery_time\": \"3 days\", \"revision_window\": \"7 days\", \"number_of_revisions\": 2, \"revision_scope_rules\": \"Minor changes only\"}],\n    \"faqs\": [{\"id\": 1, \"question\": \"Q1?\", \"answer\": \"A1\"}],\n    \"available_slots\": [{\"day\": \"sunday\", \"slots\": [{\"id\": 1, \"start_time\": \"22:00\", \"end_time\": \"03:00\"}]}],\n    \"is_active\": true,\n    \"sort_order\": 0,\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:00:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update service offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": { \"en\": \"Updated Service\", \"ar\": \"خدمة محدثة\" },\n  \"service_category_id\": 1,\n  \"type\": \"hourly\",\n  \"delivery_model\": \"on_site\",\n  \"is_active\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/service-offers/update/1", "host": ["{{base_url}}"], "path": ["service-offers", "update", "1"] },
+            "description": "Replace 1 with offer id. All fields optional. Use form-data for cover file."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url}}/service-offers/update/1", "host": ["{{base_url}}"], "path": ["service-offers", "update", "1"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Service offer updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"service_provider_id\": 1,\n    \"service_category_id\": 1,\n    \"title\": {\"en\": \"Updated Service\", \"ar\": \"خدمة محدثة\"},\n    \"type\": \"hourly\",\n    \"delivery_model\": \"on_site\",\n    \"cover\": null,\n    \"description\": {\"en\": \"Description\", \"ar\": \"وصف\"},\n    \"plans\": [],\n    \"faqs\": [],\n    \"available_slots\": [],\n    \"is_active\": true,\n    \"sort_order\": 0,\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:10:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete service offer",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/service-offers/delete/1", "host": ["{{base_url}}"], "path": ["service-offers", "delete", "1"] },
+            "description": "Replace 1 with offer id."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/service-offers/delete/1", "host": ["{{base_url}}"], "path": ["service-offers", "delete", "1"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Service offer deleted successfully.\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Provider Projects (Portfolio)",
+      "description": "Portfolio/projects: title, url, description, images, related service offers (pivot).",
+      "item": [
+        {
+          "name": "List my projects",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/provider-projects", "host": ["{{base_url}}"], "path": ["provider-projects"] },
+            "description": "Get all portfolio projects for the authenticated provider."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/provider-projects", "host": ["{{base_url}}"], "path": ["provider-projects"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Portfolio project retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"service_provider_id\": 1,\n      \"title\": \"My Project\",\n      \"url\": \"https://example.com/project\",\n      \"description\": \"Project description.\",\n      \"images\": [\"http://example.com/storage/provider-projects/images/1.jpg\"],\n      \"sort_order\": 0,\n      \"service_offers\": [{\"id\": 1, \"title\": {\"en\": \"My Service\"}, \"type\": \"fixed_price\", \"delivery_model\": \"remote\"}],\n      \"created_at\": \"2026-02-27 10:00:00\",\n      \"updated_at\": \"2026-02-27 10:00:00\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Show project",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/provider-projects/show/1", "host": ["{{base_url}}"], "path": ["provider-projects", "show", "1"] },
+            "description": "Replace 1 with project id."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/provider-projects/show/1", "host": ["{{base_url}}"], "path": ["provider-projects", "show", "1"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Portfolio project retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"service_provider_id\": 1,\n    \"title\": \"My Project\",\n    \"url\": \"https://example.com/project\",\n    \"description\": \"Project description.\",\n    \"images\": [\"http://example.com/storage/provider-projects/images/1.jpg\"],\n    \"sort_order\": 0,\n    \"service_offers\": [{\"id\": 1, \"title\": {\"en\": \"My Service\"}, \"type\": \"fixed_price\", \"delivery_model\": \"remote\"}],\n    \"created_at\": \"2026-02-27 10:00:00\",\n    \"updated_at\": \"2026-02-27 10:00:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create project",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "My Project", "type": "text" },
+                { "key": "url", "value": "https://example.com/project", "type": "text" },
+                { "key": "description", "value": "Project description.", "type": "text" },
+                { "key": "sort_order", "value": "0", "type": "text" },
+                { "key": "service_offer_ids[]", "value": "1", "description": "IDs of your service offers", "type": "text" },
+                { "key": "images[]", "description": "Image files (jpg, png, webp, max 5MB each)", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/provider-projects", "host": ["{{base_url}}"], "path": ["provider-projects"] },
+            "description": "title required. url, description, sort_order, service_offer_ids[], images[] optional."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url}}/provider-projects", "host": ["{{base_url}}"], "path": ["provider-projects"] } },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Portfolio project created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"service_provider_id\": 1,\n    \"title\": \"My Project\",\n    \"url\": \"https://example.com/project\",\n    \"description\": \"Project description.\",\n    \"images\": [],\n    \"sort_order\": 0,\n    \"service_offers\": [{\"id\": 1, \"title\": {\"en\": \"My Service\"}, \"type\": \"fixed_price\", \"delivery_model\": \"remote\"}],\n    \"created_at\": \"2026-02-27 10:00:00\",\n    \"updated_at\": \"2026-02-27 10:00:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update project",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Updated Project", "type": "text" },
+                { "key": "url", "value": "https://example.com/updated", "type": "text" },
+                { "key": "description", "value": "Updated description.", "type": "text" },
+                { "key": "sort_order", "value": "1", "type": "text" },
+                { "key": "service_offer_ids[]", "value": "1", "type": "text" },
+                { "key": "images[]", "description": "New images (replaces existing)", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/provider-projects/update/1", "host": ["{{base_url}}"], "path": ["provider-projects", "update", "1"] },
+            "description": "Replace 1 with project id. All fields optional. Sending images[] replaces existing."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url}}/provider-projects/update/1", "host": ["{{base_url}}"], "path": ["provider-projects", "update", "1"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Portfolio project updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"service_provider_id\": 1,\n    \"title\": \"Updated Project\",\n    \"url\": \"https://example.com/updated\",\n    \"description\": \"Updated description.\",\n    \"images\": [],\n    \"sort_order\": 1,\n    \"service_offers\": [],\n    \"created_at\": \"2026-02-27 10:00:00\",\n    \"updated_at\": \"2026-02-27 10:05:00\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete project",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/provider-projects/delete/1", "host": ["{{base_url}}"], "path": ["provider-projects", "delete", "1"] },
+            "description": "Replace 1 with project id."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/provider-projects/delete/1", "host": ["{{base_url}}"], "path": ["provider-projects", "delete", "1"] } },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": true,\n  \"message\": \"Portfolio project deleted successfully.\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "Admin: providers, service categories. Use access_token_admin.",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token_admin}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "Providers",
+          "description": "List all provider profiles and get provider details.",
+          "item": [
+            {
+              "name": "List all providers",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url_admin}}/providers?per_page=15&search=&type=",
+                  "host": ["{{base_url_admin}}"],
+                  "path": ["providers"],
+                  "query": [
+                    { "key": "per_page", "value": "15" },
+                    { "key": "search", "value": "" },
+                    { "key": "type", "value": "", "description": "individual | company" }
+                  ]
+                },
+                "description": "Query: per_page, search, type (individual|company)."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url_admin}}/providers?per_page=15", "host": ["{{base_url_admin}}"], "path": ["providers"], "query": [{ "key": "per_page", "value": "15" }] } },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Provider profile retrieved successfully.\",\n  \"data\": {\n    \"providers\": [\n      {\n        \"id\": 1,\n        \"user_id\": 1,\n        \"type\": \"individual\",\n        \"display_name\": \"John Provider\",\n        \"country_code\": \"SY\",\n        \"region\": \"Damascus\",\n        \"bio\": \"Experienced service provider.\",\n        \"identity_document\": null,\n        \"verification_notes\": null,\n        \"languages\": [{\"id\": 1, \"code\": \"en\", \"name\": \"English\"}],\n        \"user\": {\"id\": 1, \"name\": \"John\", \"email\": \"john@example.com\"},\n        \"service_offers_count\": 2,\n        \"created_at\": \"2026-02-26 10:00:00\",\n        \"updated_at\": \"2026-02-26 10:00:00\"\n      }\n    ],\n    \"meta\": {\n      \"current_page\": 1,\n      \"last_page\": 1,\n      \"per_page\": 15,\n      \"total\": 1\n    }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Show provider details",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": { "raw": "{{base_url_admin}}/providers/show/1", "host": ["{{base_url_admin}}"], "path": ["providers", "show", "1"] },
+                "description": "Replace 1 with provider profile id. Returns profile with user, languages, service_offers."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url_admin}}/providers/show/1", "host": ["{{base_url_admin}}"], "path": ["providers", "show", "1"] } },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Provider profile retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"type\": \"individual\",\n    \"display_name\": \"John Provider\",\n    \"country_code\": \"SY\",\n    \"region\": \"Damascus\",\n    \"bio\": \"Experienced service provider.\",\n    \"identity_document\": null,\n    \"verification_notes\": null,\n    \"languages\": [{\"id\": 1, \"code\": \"en\", \"name\": \"English\"}],\n    \"user\": {\"id\": 1, \"name\": \"John\", \"email\": \"john@example.com\"},\n    \"service_offers\": [\n      {\n        \"id\": 1,\n        \"service_provider_id\": 1,\n        \"service_category_id\": 1,\n        \"title\": {\"en\": \"My Service\", \"ar\": \"خدمتي\"},\n        \"type\": \"fixed_price\",\n        \"delivery_model\": \"remote\",\n        \"cover\": null,\n        \"description\": {\"en\": \"Description\", \"ar\": \"وصف\"},\n        \"plans\": [],\n        \"faqs\": [],\n        \"available_slots\": [],\n        \"is_active\": true,\n        \"sort_order\": 0,\n        \"created_at\": \"2026-02-26 10:00:00\",\n        \"updated_at\": \"2026-02-26 10:00:00\"\n      }\n    ],\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:00:00\"\n  }\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Service Categories",
+          "description": "Admin CRUD + toggle status.",
+          "item": [
+            {
+              "name": "List service categories",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": {
+                  "raw": "{{base_url_admin}}/service-categories?per_page=15&search=&is_active=",
+                  "host": ["{{base_url_admin}}"],
+                  "path": ["service-categories"],
+                  "query": [
+                    { "key": "per_page", "value": "15" },
+                    { "key": "search", "value": "" },
+                    { "key": "is_active", "value": "" }
+                  ]
+                },
+                "description": "Query: per_page, search, is_active."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url_admin}}/service-categories?per_page=15", "host": ["{{base_url_admin}}"], "path": ["service-categories"], "query": [{ "key": "per_page", "value": "15" }] } },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Service categories retrieved successfully.\",\n  \"data\": {\n    \"categories\": [\n      {\"id\": 1, \"name\": {\"en\": \"Consulting\", \"ar\": \"استشارات\"}, \"slug\": \"consulting\", \"is_active\": true, \"sort_order\": 0, \"created_at\": \"2026-02-26 10:00:00\", \"updated_at\": \"2026-02-26 10:00:00\"}\n    ],\n    \"meta\": {\n      \"current_page\": 1,\n      \"last_page\": 1,\n      \"per_page\": 15,\n      \"total\": 1\n    }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Show service category",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": { "raw": "{{base_url_admin}}/service-categories/show/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "show", "1"] },
+                "description": "Replace 1 with category id."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{base_url_admin}}/service-categories/show/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "show", "1"] } },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Service categories retrieved successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": {\"en\": \"Consulting\", \"ar\": \"استشارات\"},\n    \"slug\": \"consulting\",\n    \"is_active\": true,\n    \"sort_order\": 0,\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:00:00\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Create service category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": { \"en\": \"Consulting\", \"ar\": \"استشارات\" },\n  \"slug\": \"consulting\",\n  \"is_active\": true,\n  \"sort_order\": 0\n}"
+                },
+                "url": { "raw": "{{base_url_admin}}/service-categories/create", "host": ["{{base_url_admin}}"], "path": ["service-categories", "create"] },
+                "description": "name (required), slug, is_active, sort_order."
+              },
+              "response": [
+                {
+                  "name": "201 Created",
+                  "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url_admin}}/service-categories/create", "host": ["{{base_url_admin}}"], "path": ["service-categories", "create"] } },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Service category created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": {\"en\": \"Consulting\", \"ar\": \"استشارات\"},\n    \"slug\": \"consulting\",\n    \"is_active\": true,\n    \"sort_order\": 0,\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:00:00\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Update service category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": { \"en\": \"Consulting Updated\", \"ar\": \"استشارات محدثة\" },\n  \"slug\": \"consulting-updated\",\n  \"is_active\": true,\n  \"sort_order\": 1\n}"
+                },
+                "url": { "raw": "{{base_url_admin}}/service-categories/update/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "update", "1"] },
+                "description": "Replace 1 with category id."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url_admin}}/service-categories/update/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "update", "1"] } },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Service category updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": {\"en\": \"Consulting Updated\", \"ar\": \"استشارات محدثة\"},\n    \"slug\": \"consulting-updated\",\n    \"is_active\": true,\n    \"sort_order\": 1,\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:15:00\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Delete service category",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": { "raw": "{{base_url_admin}}/service-categories/delete/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "delete", "1"] },
+                "description": "Replace 1 with category id."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url_admin}}/service-categories/delete/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "delete", "1"] } },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Service category deleted successfully.\",\n  \"data\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "Toggle service category status",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": { "raw": "{{base_url_admin}}/service-categories/toggle-status/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "toggle-status", "1"] },
+                "description": "Replace 1 with category id. Toggles is_active."
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{base_url_admin}}/service-categories/toggle-status/1", "host": ["{{base_url_admin}}"], "path": ["service-categories", "toggle-status", "1"] } },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "body": "{\n  \"status\": true,\n  \"message\": \"Service category status toggled successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": {\"en\": \"Consulting\", \"ar\": \"استشارات\"},\n    \"slug\": \"consulting\",\n    \"is_active\": false,\n    \"sort_order\": 0,\n    \"created_at\": \"2026-02-26 10:00:00\",\n    \"updated_at\": \"2026-02-26 10:20:00\"\n  }\n}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

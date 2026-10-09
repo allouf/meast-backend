@@ -1,0 +1,287 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-rfq-meast-0001",
+		"name": "Meast — RFQ / Custom Requests",
+		"description": "Custom Requests (RFQ) API for the Services module.\n\n**Base path:** `{{base_url}}/api/v1`\n\n**Auth:** JWT `Authorization: Bearer <token>` (guard `api`). Authenticated routes also use `validate.device` (device_id in token payload).\n\n**Variables:** Set `base_url`, `user_token` (client), and `provider_token`. Use `custom_request_id`, `quote_id`, `order_id`, `category_id` from responses.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000" },
+		{ "key": "user_token", "value": "" },
+		{ "key": "provider_token", "value": "" },
+		{ "key": "category_id", "value": "1" },
+		{ "key": "custom_request_id", "value": "1" },
+		{ "key": "quote_id", "value": "1" },
+		{ "key": "order_id", "value": "1" }
+	],
+	"item": [
+		{
+			"name": "User (Client)",
+			"description": "Client-side RFQ: categories, CRUD on own requests, quotes, orders, payment.\n\nUse **user_token** (Bearer) except **List categories** (public).",
+			"item": [
+				{
+					"name": "List custom request categories",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/custom-request-categories",
+						"description": "Public. Dropdown options when creating an RFQ."
+					}
+				},
+				{
+					"name": "List my custom requests",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/custom-requests?status=Open&per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "custom-requests"],
+							"query": [
+								{ "key": "status", "value": "Open", "description": "Optional: Open | Awarded | Canceled | Expired | In Progress | Completed" },
+								{ "key": "per_page", "value": "15", "description": "1–50" }
+							]
+						},
+						"description": "Paginated history for the authenticated client."
+					}
+				},
+				{
+					"name": "Create custom request",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "title", "value": "Website redesign", "type": "text" },
+								{ "key": "category_id", "value": "{{category_id}}", "type": "text" },
+								{ "key": "description", "value": "Need a full UI refresh and component library.", "type": "text" },
+								{ "key": "delivery_model", "value": "Remote", "type": "text", "description": "Remote | Onsite | Hybrid" },
+								{ "key": "deadline_date", "value": "2026-12-31", "type": "text" },
+								{ "key": "budget_min", "value": "1000", "type": "text" },
+								{ "key": "budget_max", "value": "5000", "type": "text" },
+								{ "key": "attachments[]", "type": "file", "src": "", "disabled": true }
+							]
+						},
+						"url": "{{base_url}}/api/v1/custom-requests",
+						"description": "Multipart form. Optional `attachments[]` files (jpg, png, pdf, doc, docx, max 10MB each)."
+					}
+				},
+				{
+					"name": "Show custom request details",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/custom-requests/show/{{custom_request_id}}",
+						"description": "Brief, attachments, category, and all quotes."
+					}
+				},
+				{
+					"name": "Cancel custom request",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [],
+						"url": "{{base_url}}/api/v1/custom-requests/cancel/{{custom_request_id}}",
+						"description": "Only while status is Open and no quote is Accepted."
+					}
+				},
+				{
+					"name": "List quotes for custom request",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/custom-requests/{{custom_request_id}}/quotes",
+						"description": "Client-only; returns `custom_request` + `quotes`."
+					}
+				},
+				{
+					"name": "Accept quote",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [],
+						"url": "{{base_url}}/api/v1/custom-requests/quotes/{{quote_id}}/accept",
+						"description": "Sets quote Accepted, RFQ Awarded, creates pending order (HTTP 201)."
+					}
+				},
+				{
+					"name": "Show custom request order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/custom-request-orders/show/{{order_id}}",
+						"description": "Financial breakdown. Allowed for client or provider on that order."
+					}
+				},
+				{
+					"name": "Process order payment",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"payment_method\": \"mada\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/custom-request-orders/{{order_id}}/process-payment",
+						"description": "Client only. `payment_method`: `credit_card` | `mada` | `apple_pay`. Sets payment to Escrow Funded (placeholder gateway)."
+					}
+				}
+			]
+		},
+		{
+			"name": "Provider",
+			"description": "Provider RFQ: discover open requests, submit/manage quotes, dashboard stats.\n\nRequires **provider_token** and completed service provider profile (`service.profile.provider`).",
+			"item": [
+				{
+					"name": "Discover open RFQs (marketplace)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/discover/requests?category_id={{category_id}}&deadline_preset=next_7_days&budget_min=0&budget_max=10000&per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "discover", "requests"],
+							"query": [
+								{ "key": "category_id", "value": "{{category_id}}", "disabled": true },
+								{ "key": "deadline_from", "value": "", "disabled": true },
+								{ "key": "deadline_to", "value": "", "disabled": true },
+								{ "key": "deadline_preset", "value": "next_7_days", "description": "next_7_days" },
+								{ "key": "budget_min", "value": "0" },
+								{ "key": "budget_max", "value": "10000" },
+								{ "key": "per_page", "value": "15" }
+							]
+						},
+						"description": "Open RFQs excluding own. Each item includes `has_applied` (active non-canceled quote by you)."
+					}
+				},
+				{
+					"name": "Discover RFQ detail",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/discover/requests/{{custom_request_id}}",
+						"description": "Open RFQ only; not your own listing. Includes `my_quote` and `has_applied`."
+					}
+				},
+				{
+					"name": "My quotes — dashboard stats",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/provider/quotes/stats",
+						"description": "Returns `total`, `awarded`, `under_review`, `rejected`."
+					}
+				},
+				{
+					"name": "My quotes — list",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/provider/quotes?per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "provider", "quotes"],
+							"query": [{ "key": "per_page", "value": "15" }]
+						},
+						"description": "Paginated quotes with nested `custom_request` (title, category, delivery model, deadline, budget, status)."
+					}
+				},
+				{
+					"name": "Submit quote",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"proposed_budget\": 3500,\n  \"estimated_delivery_date\": \"2026-06-01\",\n  \"cover_letter_or_message\": \"We can deliver in phases with weekly demos.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/custom-requests/{{custom_request_id}}/quotes",
+						"description": "One active quote per RFQ; after canceling, you can submit again."
+					}
+				},
+				{
+					"name": "Update quote (Pending only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "PATCH",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"proposed_budget\": 3200,\n  \"cover_letter_or_message\": \"Updated scope and timeline.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/quotes/{{quote_id}}",
+						"description": "PUT or PATCH. Only while status is Pending (In Review)."
+					}
+				},
+				{
+					"name": "Cancel (withdraw) quote",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "PATCH",
+						"header": [],
+						"url": "{{base_url}}/api/v1/quotes/{{quote_id}}/cancel",
+						"description": "Sets status to Canceled. Only while Pending."
+					}
+				}
+			]
+		}
+	]
+}

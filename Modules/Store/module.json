@@ -1,0 +1,11 @@
+{
+    "name": "Store",
+    "alias": "store",
+    "description": "Stores, products, cart, orders, packages, flash sales, reviews, wishlist, coupons, inventory, store members",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Store\\Providers\\StoreServiceProvider"
+    ],
+    "files": []
+}

@@ -1,0 +1,22 @@
+{
+    "user_registered_successfully": "تم تسجيل المستخدم بنجاح",
+    "company_registered_successfully": "تم تسجيل الشركة بنجاح",
+    "login_successful": "تم تسجيل الدخول بنجاح",
+    "unauthorized": "غير مصرح",
+    "login_failed": "فشل تسجيل الدخول",
+    "logged_out_successfully": "تم تسجيل الخروج بنجاح",
+    "logout_failed": "فشل تسجيل الخروج",
+    "something_went_wrong": "حدث خطأ ما",
+    "profile_updated_successfully": "تم تحديث الملف الشخصي بنجاح",
+    "fetch_success": "تم جلب المعلومات بنجاح.",
+    "create_success": "تم إنشاء المعلومات بنجاح.",
+    "update_success": "تم تحديث المعلومات بنجاح.",
+    "delete_success": "تم حذف المعلومات بنجاح.",
+    "switch_success": "تم تحديث الحالة بنجاح",
+    "invalid_referral_code": "كود غير صالح",
+    "not_found": "المزاد غير موجود.",
+    "not_active": "المزاد غير نشط.",
+    "ended": "انتهى وقت المزاد.",
+    "min_increment": "يجب أن تكون قيمة المزايدة على الأقل :min.",
+    "higher_than_current": "يجب أن تكون مزايدتك أعلى من المزايدة الحالية."
+}

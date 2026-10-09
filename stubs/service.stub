@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Services;
+
+use App\Repositories\Interfaces\{{interfaceName}};
+use \Illuminate\Database\Eloquent\ModelNotFoundException;
+
+class {{serviceName}}
+{
+    protected ${{repoVar}};
+
+    public function __construct({{interfaceName}} ${{repoVar}})
+    {
+        $this->{{repoVar}} = ${{repoVar}};
+    }
+
+    public function all()
+    {
+        return $this->{{repoVar}}->all();
+    }
+
+    public function findById($id)
+    {
+        return $this->{{repoVar}}->findById($id);
+    }
+
+    public function create(array $data)
+    {
+        return $this->{{repoVar}}->create($data);
+    }
+
+    public function update(array $data,$id)
+    {
+        ${{modelVar}} = $this->{{repoVar}}->findById($id);
+        throw_if(!${{modelVar}}, ModelNotFoundException::class, "Record not found");
+        return $this->{{repoVar}}->update($data,${{modelVar}});
+    }
+
+    public function delete($id)
+    {
+        ${{modelVar}} = $this->{{repoVar}}->findById($id);
+        throw_if(!${{modelVar}}, ModelNotFoundException::class, "Record not found");
+        return $this->{{repoVar}}->delete(${{modelVar}});
+ 
+    }
+}

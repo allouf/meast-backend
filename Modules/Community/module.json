@@ -1,0 +1,1 @@
+{"name":"Community","alias":"community","description":"Posts, reels, stories, comments, reactions, reports, community and suggested content settings","keywords":[],"priority":0,"providers":["Modules\\Community\\Providers\\CommunityServiceProvider"],"files":[]}

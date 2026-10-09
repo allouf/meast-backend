@@ -1,0 +1,443 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-service-orders-meast-0001",
+		"name": "Meast — Service Offer Orders (Polymorphic)",
+		"description": "Unified **service order** APIs supporting polymorphic `orderable` on `service_offer_orders`.\n\n**Base path:** `{{base_url}}/api/v1`\n\n**Auth (buyer routes):** JWT `Authorization: Bearer <token>` (`auth:api`) + `validate.device`. Use `{{user_token}}`.\n\n**Orderable types**\n| `orderable_type` | `orderable_id` refers to | Notes |\n|------------------|--------------------------|-------|\n| `service_offer` | `service_offers.id` | Optional `plan_id`; clones nothing |\n| `milestone_template` | `milestones.id` (provider template) | Clones phases to `service_offer_order_phases`; per-phase pay/start/deliver — see **Meast — Milestone Order Phases** collection |\n\n**Legacy payload** (still accepted): `service_offer_id` + `service_offer_plan_id` are mapped to the new fields automatically.\n\n**Typical flows**\n1. **Direct service:** Browse service → `POST /service-orders` with `service_offer` → `GET show` → pay / provider workflow\n2. **Milestone package:** Provider creates & activates template (`Meast — Provider Milestones` collection) → Buyer orders with `milestone_template` → response includes `milestone_package` (template snapshot via `orderable`)\n\n**Variables:** `service_order_id`, `service_offer_id`, `plan_id`, `milestone_template_id` — auto-set by test scripts where noted.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000" },
+		{ "key": "user_token", "value": "" },
+		{ "key": "provider_token", "value": "" },
+		{ "key": "service_order_id", "value": "1" },
+		{ "key": "service_offer_id", "value": "1" },
+		{ "key": "plan_id", "value": "1" },
+		{ "key": "milestone_template_id", "value": "1" },
+		{ "key": "order_phase_id", "value": "1" },
+		{ "key": "extension_id", "value": "1" }
+	],
+	"item": [
+		{
+			"name": "Reference",
+			"description": "Helper requests to discover IDs before placing an order.",
+			"item": [
+				{
+					"name": "Browse services (public)",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/services?per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "services"],
+							"query": [
+								{ "key": "per_page", "value": "15" },
+								{ "key": "page", "value": "1", "disabled": true },
+								{ "key": "search", "value": "", "disabled": true }
+							]
+						},
+						"description": "No auth. Pick a listing `id` for `service_offer_id`."
+					}
+				},
+				{
+					"name": "Show service (public)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  const data = json.data || json;",
+									"  if (data.id) pm.collectionVariables.set('service_offer_id', data.id);",
+									"  const plans = data.plans || [];",
+									"  if (plans[0] && plans[0].id) pm.collectionVariables.set('plan_id', plans[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/services/show/{{service_offer_id}}",
+						"description": "No auth. Sets `service_offer_id` and first plan `plan_id` from response."
+					}
+				},
+				{
+					"name": "List milestone templates (provider)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/milestones?activation_status=true",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "milestones"],
+							"query": [
+								{ "key": "activation_status", "value": "true", "description": "Only active templates can be ordered" },
+								{ "key": "per_page", "value": "15", "disabled": true }
+							]
+						},
+						"description": "Provider auth. Use an active template `id` as `milestone_template_id` / `orderable_id` for milestone orders."
+					}
+				}
+			]
+		},
+		{
+			"name": "Buyer — Create order",
+			"description": "`POST /api/v1/service-orders` — polymorphic order creation (201 on success).",
+			"item": [
+				{
+					"name": "Type A — Direct service (service_offer)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  if (json.data && json.data.id) {",
+									"    pm.collectionVariables.set('service_order_id', json.data.id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderable_type\": \"service_offer\",\n  \"orderable_id\": {{service_offer_id}},\n  \"plan_id\": {{plan_id}},\n  \"notes\": \"Please follow the brand guidelines in the attached brief.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/service-orders",
+						"description": "**Type A — Direct Service Order**\n\n- `orderable_type`: `service_offer`\n- `orderable_id`: service listing id\n- `plan_id`: optional; cheapest plan used if omitted\n- `delivery_time_minutes` set from plan\n- Morph: `orderable` → `ServiceOffer`\n\nResponse includes `orderable_type`, `service`, `summary`, `requirements.plan_id`."
+					}
+				},
+				{
+					"name": "Type A — Direct service (no plan_id)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  if (json.data && json.data.id) pm.collectionVariables.set('service_order_id', json.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderable_type\": \"service_offer\",\n  \"orderable_id\": {{service_offer_id}},\n  \"notes\": \"Use the standard package if no plan is selected.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/service-orders",
+						"description": "Same as Type A but omits `plan_id` — backend picks the lowest-priced plan on the offer."
+					}
+				},
+				{
+					"name": "Type A — Direct service (multipart + attachments)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  if (json.data && json.data.id) pm.collectionVariables.set('service_order_id', json.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "orderable_type", "value": "service_offer", "type": "text" },
+								{ "key": "orderable_id", "value": "{{service_offer_id}}", "type": "text" },
+								{ "key": "plan_id", "value": "{{plan_id}}", "type": "text" },
+								{ "key": "notes", "value": "Requirements with file attachments.", "type": "text" },
+								{
+									"key": "attachments[]",
+									"type": "file",
+									"src": "",
+									"disabled": true,
+									"description": "jpg, jpeg, png, pdf, doc, docx — max 5 files, 5MB each"
+								}
+							]
+						},
+						"url": "{{base_url}}/api/v1/service-orders",
+						"description": "Multipart variant for file uploads. Enable `attachments[]` and pick a file."
+					}
+				},
+				{
+					"name": "Type B — Milestone package (milestone_template)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  const d = json.data;",
+									"  if (d && d.id) pm.collectionVariables.set('service_order_id', d.id);",
+									"  if (d && d.cursor && d.cursor.phase_id) {",
+									"    pm.collectionVariables.set('order_phase_id', d.cursor.phase_id);",
+									"  } else if (d && d.phases && d.phases[0]) {",
+									"    const c = d.phases.find(p => p.is_cursor) || d.phases[0];",
+									"    if (c.id) pm.collectionVariables.set('order_phase_id', c.id);",
+									"  }",
+									"  if (d && d.phases) {",
+									"    pm.test('Order phases cloned', () => pm.expect(d.phases.length).to.be.above(0));",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderable_type\": \"milestone_template\",\n  \"orderable_id\": {{milestone_template_id}},\n  \"notes\": \"Please start with the discovery phase after payment.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/service-orders",
+						"description": "**Type B — Milestone Package Order (per-phase)**\n\n1. Fetches active milestone **template**\n2. Creates order + clones `service_offer_order_phases` from template lines\n3. Sets `current_phase_id` to first phase; status `PENDING_PAYMENT`\n\n- `plan_id` must not be sent\n- Response includes `phases[]`, `cursor` (`phase_id`, `action`)\n- Continue workflow in **Meast — Milestone Order Phases** collection (pay → start → deliver → accept per phase)."
+					}
+				},
+				{
+					"name": "Legacy — service_offer_id + service_offer_plan_id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  if (json.data && json.data.id) pm.collectionVariables.set('service_order_id', json.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service_offer_id\": {{service_offer_id}},\n  \"service_offer_plan_id\": {{plan_id}},\n  \"notes\": \"Backward-compatible payload (mapped to orderable_type / orderable_id).\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/service-orders",
+						"description": "Backward compatibility: `prepareForValidation()` maps legacy fields to `orderable_type=service_offer`, `orderable_id`, and `plan_id`."
+					}
+				}
+			]
+		},
+		{
+			"name": "Buyer — Manage orders",
+			"description": "List, view, and cancel orders created by the authenticated buyer.",
+			"item": [
+				{
+					"name": "List my orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/service-orders?status=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "service-orders"],
+							"query": [
+								{
+									"key": "status",
+									"value": "",
+									"description": "Optional filter: PENDING_PAYMENT, PENDING, IN_PROGRESS, DELIVERED, etc."
+								}
+							]
+						},
+						"description": "Returns orders for the buyer. Each item includes `orderable_type` and delivery summary."
+					}
+				},
+				{
+					"name": "Show order details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  const d = json.data;",
+									"  if (d) {",
+									"    pm.test('Has orderable_type', () => pm.expect(d.orderable_type).to.be.a('string'));",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/show/{{service_order_id}}",
+						"description": "Full order detail.\n\n- **service_offer** orders: `service` block populated\n- **milestone_template** orders: `milestone` (frozen header snapshot — title/description/delivery_model/modification-days + derived total_budget/duration; NOT the live template, no nested phases) + `phases[]` (the order's phase snapshot — single source of truth for phases) + `cursor` (use `cursor.phase_id` as `order_phase_id`; `cursor.action` is role-specific)\n- Per-phase workflow: import **Meast — Milestone Order Phases** collection"
+					}
+				},
+				{
+					"name": "Cancel order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/cancel/{{service_order_id}}",
+						"description": "Buyer cancel. Allowed only before work has progressed (not in progress / delivered / completed)."
+					}
+				},
+				{
+					"name": "Approve extension",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/approve-extension/{{extension_id}}",
+						"description": "Set `extension_id` from order `extensions[]`. Variable not in collection defaults — add `extension_id` or replace in URL."
+					}
+				},
+				{
+					"name": "Reject extension",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/reject-extension/{{extension_id}}",
+						"description": "Set `extension_id` from order details."
+					}
+				}
+			]
+		},
+		{
+			"name": "Provider — Orders (read)",
+			"description": "Provider views orders assigned to their profile (`service.profile.provider`).",
+			"item": [
+				{
+					"name": "List provider orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/provider-orders?status=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "provider-orders"],
+							"query": [{ "key": "status", "value": "" }]
+						},
+						"description": "All orders for the authenticated provider (direct + milestone)."
+					}
+				},
+				{
+					"name": "Show provider order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/provider-orders/show/{{service_order_id}}",
+						"description": "Provider order detail (same polymorphic shape as buyer show)."
+					}
+				},
+				{
+					"name": "Orders by service offer",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/provider-orders/by-service/{{service_offer_id}}?status=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "provider-orders", "by-service", "{{service_offer_id}}"],
+							"query": [{ "key": "status", "value": "" }]
+						},
+						"description": "Filtered by `orderable_type=service_offer` and `orderable_id`."
+					}
+				}
+			]
+		}
+	]
+}

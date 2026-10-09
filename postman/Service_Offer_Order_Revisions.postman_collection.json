@@ -1,0 +1,176 @@
+{
+	"info": {
+		"_postman_id": "b2c3d4e5-revisions-meast-0001",
+		"name": "Meast — Service Offer Order Revisions",
+		"description": "Service offer order **revision** APIs (buyer requests changes; provider delivers or rejects).\n\n**Base path:** `{{base_url}}/api/v1`\n\n**Auth:** JWT `Authorization: Bearer <token>` (`auth:api`). Routes also use `validate.device` — ensure the token includes the expected device payload.\n\n**Buyer** uses `user_token`. **Provider** routes require a complete service-provider profile (`service.profile.provider`): use `provider_token`.\n\n**Variables:** `service_order_id` (numeric), `revision_id` (from list response), `delivery_version` (which delivery the buyer is revising, usually latest version from order details).\n\n**Flow:** Order must be `DELIVERED` → buyer `POST` revision → order becomes `REVISION_REQUESTED` → provider `POST` deliver (new files) **or** `POST` reject revision.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000" },
+		{ "key": "user_token", "value": "" },
+		{ "key": "provider_token", "value": "" },
+		{ "key": "service_order_id", "value": "1" },
+		{ "key": "revision_id", "value": "1" },
+		{ "key": "delivery_version", "value": "1" }
+	],
+	"item": [
+		{
+			"name": "Buyer",
+			"description": "Authenticated **client** (buyer). List revisions and submit a revision request when the order is delivered and credits remain (from plan `number_of_revisions`).",
+			"item": [
+				{
+					"name": "List revisions for order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/revisions",
+						"description": "Returns `revisions_allowed`, `revisions_used`, `revisions_remaining`, and the `revisions` array (newest first)."
+					}
+				},
+				{
+					"name": "Request revision (multipart)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "delivery_version",
+									"value": "{{delivery_version}}",
+									"type": "text",
+									"description": "Must match an existing delivery `version` on this order."
+								},
+								{
+									"key": "notes",
+									"value": "Please align the logo with the moodboard and increase contrast on the icon.",
+									"type": "text"
+								},
+								{
+									"key": "request_type",
+									"value": "STANDARD",
+									"type": "text",
+									"description": "STANDARD | MINOR | CLARIFICATION"
+								},
+								{
+									"key": "attachments[]",
+									"type": "file",
+									"src": "",
+									"disabled": true,
+									"description": "Optional. jpg, jpeg, png, pdf — max 5MB each (validation in app)."
+								}
+							]
+						},
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/revisions",
+						"description": "Requires order status **DELIVERED**, revision credits left, and no other pending revision. Sets order to **REVISION_REQUESTED**. Response is full order details resource."
+					}
+				}
+			]
+		},
+		{
+			"name": "Provider",
+			"description": "Authenticated **service provider** (seller). List revisions, reject a request, or submit a new delivery while the order is in **REVISION_REQUESTED**.",
+			"item": [
+				{
+					"name": "List revisions for order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/provider-orders/{{service_order_id}}/revisions",
+						"description": "Same shape as buyer list; provider must own the order."
+					}
+				},
+				{
+					"name": "Reject revision request",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rejection_reason\": \"This request is outside the agreed scope for the selected package.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/provider-orders/revisions/{{revision_id}}/reject",
+						"description": "Marks revision **REJECTED** and returns order status to **DELIVERED** (buyer keeps revision credit). Order must be **REVISION_REQUESTED** with this revision **PENDING**."
+					}
+				},
+				{
+					"name": "Deliver work (revision cycle)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "message",
+									"value": "Updated assets per your feedback — see V2 in attachments.",
+									"type": "text"
+								},
+								{
+									"key": "attachments[]",
+									"type": "file",
+									"src": "",
+									"disabled": true
+								}
+							]
+						},
+						"url": "{{base_url}}/api/v1/provider-orders/deliver/{{service_order_id}}",
+						"description": "When order is **REVISION_REQUESTED**, a pending revision must exist. Creates the next delivery version, marks the revision **ACCEPTED**, sets order back to **DELIVERED**. Also used for first delivery when order is **IN_PROGRESS**."
+					}
+				}
+			]
+		},
+		{
+			"name": "Reference (same order context)",
+			"description": "Optional calls to load order context before/after revision actions.",
+			"item": [
+				{
+					"name": "Buyer — show service order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/service-orders/show/{{service_order_id}}",
+						"description": "Includes `deliveries`, `revision_policy`, and `revisions` on the details resource."
+					}
+				},
+				{
+					"name": "Provider — show provider order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/provider-orders/show/{{service_order_id}}",
+						"description": "Provider view of the same order (deliveries, revisions, etc.)."
+					}
+				}
+			]
+		}
+	]
+}

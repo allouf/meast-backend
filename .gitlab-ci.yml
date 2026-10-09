@@ -1,0 +1,12 @@
+
+stages:
+  - build
+  - deploy
+  - post-deploy
+
+variables:
+  GIT_DEPTH: 0
+
+include:
+  - local: ".gitlab/deploy/aws-beta.yml"
+  - local: ".gitlab/deploy/hostinger.yml"

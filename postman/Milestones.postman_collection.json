@@ -1,0 +1,239 @@
+{
+	"info": {
+		"_postman_id": "c3d4e5f6-milestones-meast-0001",
+		"name": "Meast — Provider Milestones",
+		"description": "Provider **milestone packages** — combine multiple services into a single bundle (phases) with auto-calculated timeline and budget.\n\n**Base path:** `{{base_url}}/api/v1`\n\n**Auth:** JWT `Authorization: Bearer <token>` (`auth:api`) + `validate.device`.\n\n**Middleware:** All routes require a complete service-provider profile (`service.profile.provider`). Use `{{provider_token}}`.\n\n**Variables:**\n- `milestone_id` — from list/create response\n- `milestone_line_id` — from `services[].id` in milestone detail\n- `service_category_id` — from `GET /api/v1/service-categories`\n\n**Delivery model values:** `remote`, `on_site`, `hybrid`, `in_person`\n\n**Typical flow:** List categories → Create milestone with `services[]` → Show detail → Toggle activation → Optionally add/update/delete individual service lines.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000" },
+		{ "key": "provider_token", "value": "" },
+		{ "key": "milestone_id", "value": "1" },
+		{ "key": "milestone_line_id", "value": "1" },
+		{ "key": "service_category_id", "value": "1" }
+	],
+	"item": [
+		{
+			"name": "Reference",
+			"description": "Helper requests (not part of milestones CRUD).",
+			"item": [
+				{
+					"name": "List service categories",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-categories",
+						"description": "Use an active category `id` for `service_category_id` in milestone service lines. Includes `requires_verification` flag per category."
+					}
+				}
+			]
+		},
+		{
+			"name": "Milestones",
+			"description": "CRUD for milestone packages and activation toggle.",
+			"item": [
+				{
+					"name": "List milestones",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/milestones?per_page=15&search=&activation_status=&delivery_model=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "milestones"],
+							"query": [
+								{ "key": "per_page", "value": "15" },
+								{ "key": "page", "value": "1", "disabled": true },
+								{ "key": "search", "value": "", "description": "Search title/description" },
+								{ "key": "activation_status", "value": "", "description": "true | false" },
+								{ "key": "delivery_model", "value": "", "description": "remote | on_site | hybrid | in_person" }
+							]
+						},
+						"description": "Paginated list for **My Milestones** table. Returns `milestones[]` + `meta`."
+					}
+				},
+				{
+					"name": "Show milestone",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/milestones/show/{{milestone_id}}",
+						"description": "Detail view with `services` (roadmap phases), `summary` (delivery_model, timeline_days, total_budget)."
+					}
+				},
+				{
+					"name": "Create milestone",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  if (json.data && json.data.id) {",
+									"    pm.collectionVariables.set('milestone_id', json.data.id);",
+									"  }",
+									"  if (json.data && json.data.services && json.data.services[0]) {",
+									"    pm.collectionVariables.set('milestone_line_id', json.data.services[0].id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Complete E-Commerce Solution\",\n  \"description\": \"Full-stack package: discovery, design, and development phases delivered as one block.\",\n  \"delivery_model\": \"hybrid\",\n  \"request_modification_days\": 12,\n  \"activation_status\": false,\n  \"sort_order\": 0,\n  \"services\": [\n    {\n      \"service_name\": \"Discovery & Research\",\n      \"service_category_id\": {{service_category_id}},\n      \"duration_days\": 10,\n      \"budget\": 4500,\n      \"revision_window_days\": 12,\n      \"sort_order\": 0\n    },\n    {\n      \"service_name\": \"Landing Page Development\",\n      \"service_category_id\": {{service_category_id}},\n      \"duration_days\": 10,\n      \"budget\": 3500,\n      \"revision_window_days\": 5,\n      \"sort_order\": 1\n    }\n  ]\n}"
+						},
+						"url": "{{base_url}}/api/v1/milestones",
+						"description": "**Create New Milestone** form. At least one item in `services[]` is required. `duration_days` and `total_budget` on the milestone are calculated from line items."
+					}
+				},
+				{
+					"name": "Update milestone",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Complete E-Commerce Solution (Updated)\",\n  \"description\": \"Updated package description.\",\n  \"delivery_model\": \"remote\",\n  \"request_modification_days\": 14,\n  \"services\": [\n    {\n      \"service_name\": \"Discovery & Research\",\n      \"service_category_id\": {{service_category_id}},\n      \"duration_days\": 8,\n      \"budget\": 4000,\n      \"revision_window_days\": 10,\n      \"sort_order\": 0\n    },\n    {\n      \"service_name\": \"UI/UX Design\",\n      \"service_category_id\": {{service_category_id}},\n      \"duration_days\": 12,\n      \"budget\": 5000,\n      \"revision_window_days\": 7,\n      \"sort_order\": 1\n    }\n  ]\n}"
+						},
+						"url": "{{base_url}}/api/v1/milestones/update/{{milestone_id}}",
+						"description": "Partial update. If `services` is sent, existing lines are **replaced** (full sync)."
+					}
+				},
+				{
+					"name": "Delete milestone",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "DELETE",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/milestones/delete/{{milestone_id}}",
+						"description": "Deletes milestone and all associated service lines (cascade)."
+					}
+				},
+				{
+					"name": "Toggle activation",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/milestones/toggle-activation/{{milestone_id}}",
+						"description": "Flips `activation_status`. Requires at least one service line (422 otherwise)."
+					}
+				}
+			]
+		},
+		{
+			"name": "Milestone service lines",
+			"description": "Manage individual phases without replacing the full `services` array (Add new service / Edit / Delete in roadmap UI).",
+			"item": [
+				{
+					"name": "Add service line",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  if (json.data && json.data.id) {",
+									"    pm.collectionVariables.set('milestone_line_id', json.data.id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service_name\": \"QA & Launch Support\",\n  \"service_category_id\": {{service_category_id}},\n  \"duration_days\": 5,\n  \"budget\": 1200,\n  \"revision_window_days\": 3,\n  \"sort_order\": 2\n}"
+						},
+						"url": "{{base_url}}/api/v1/milestones/{{milestone_id}}/services",
+						"description": "**Create New Service** modal — adds one phase to an existing milestone. Recalculates milestone `duration_days` and `total_budget`."
+					}
+				},
+				{
+					"name": "Update service line",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service_name\": \"QA & Launch Support (Extended)\",\n  \"duration_days\": 7,\n  \"budget\": 1500,\n  \"revision_window_days\": 5\n}"
+						},
+						"url": "{{base_url}}/api/v1/milestones/services/update/{{milestone_line_id}}",
+						"description": "Edit a single roadmap phase. All body fields are optional (`sometimes` validation)."
+					}
+				},
+				{
+					"name": "Delete service line",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "DELETE",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/milestones/services/delete/{{milestone_line_id}}",
+						"description": "Removes one phase. Milestone totals are recalculated automatically."
+					}
+				}
+			]
+		}
+	]
+}

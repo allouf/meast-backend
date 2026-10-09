@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Transak Sandbox — Backend Integration Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --accent:#22d3ee; --text:#e2e8f0; --muted:#94a3b8; --ok:#22c55e; --err:#ef4444; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:920px; margin:24px auto; padding:0 16px; }
+  h1 { margin:0 0 8px; font-size:22px; }
+  p.lead { color:var(--muted); margin:0 0 24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:16px; }
+  .card h2 { margin:0 0 12px; font-size:16px; color:var(--accent); }
+  label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  input, select, textarea { width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:#0b1220; color:var(--text); font:13px/1.4 ui-monospace,monospace; }
+  textarea { min-height:80px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  button { background:var(--accent); color:#0f172a; border:0; padding:10px 16px; border-radius:6px; font-weight:600; cursor:pointer; }
+  button[disabled] { opacity:0.5; cursor:not-allowed; }
+  button.secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  pre { background:#0b1220; border:1px solid var(--line); padding:10px; border-radius:6px; overflow:auto; font-size:12px; max-height:280px; }
+  .status { padding:6px 10px; border-radius:4px; font-size:12px; display:inline-block; }
+  .status.ok  { background:rgba(34,197,94,0.15); color:var(--ok); }
+  .status.err { background:rgba(239,68,68,0.15); color:var(--err); }
+  .gap { margin-top:12px; }
+  small.hint { display:block; color:var(--muted); margin-top:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Transak Sandbox — Backend Integration Test</h1>
+  <p class="lead">
+    Verifies the meast-backend Transak endpoints end-to-end:
+    quote → sign URL → open hosted widget → receive webhook.
+    Served by Apache at <code>http://meast.local/transak-sandbox-test.html</code>
+    so it shares the backend's origin (no CORS needed).
+  </p>
+
+  <!-- ────────────────────────── Connection ────────────────────────── -->
+  <div class="card">
+    <h2>1. Backend connection</h2>
+    <label>API base URL</label>
+    <input id="apiBase" value="/api/v1" />
+    <small class="hint">Default uses a relative path — works whether you open the page on meast.local or on UAT. Override only if needed.</small>
+
+    <div class="gap">
+      <label>JWT (auth:api token of any logged-in user)</label>
+      <textarea id="jwt" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp..."></textarea>
+      <small class="hint">
+        Get this by logging in via the platform's existing login endpoint.
+        Or generate one in tinker:
+        <code>auth('api')->login(\Modules\Core\Models\User::first())</code>.
+      </small>
+    </div>
+  </div>
+
+  <!-- ────────────────────────── Quote ────────────────────────── -->
+  <div class="card">
+    <h2>2. Get a live quote</h2>
+    <div class="row3">
+      <div>
+        <label>Crypto</label>
+        <input id="qCrypto" value="ETH" />
+      </div>
+      <div>
+        <label>Network</label>
+        <input id="qNetwork" value="ethereum" />
+      </div>
+      <div>
+        <label>Fiat</label>
+        <input id="qFiat" value="USD" />
+      </div>
+    </div>
+    <div class="row3 gap">
+      <div>
+        <label>Payment method</label>
+        <input id="qPayMethod" value="credit_debit_card" />
+      </div>
+      <div>
+        <label>Fiat amount</label>
+        <input id="qAmount" type="number" value="50" />
+      </div>
+      <div>
+        <label>BUY / SELL</label>
+        <select id="qSide"><option>BUY</option><option>SELL</option></select>
+      </div>
+    </div>
+    <div class="gap">
+      <button onclick="getQuote()">Fetch quote</button>
+      <span id="quoteStatus"></span>
+    </div>
+    <pre id="quoteOut" class="gap">(quote response will show here)</pre>
+  </div>
+
+  <!-- ──────────────────────── Wallet (connect / create) ──────────────────────── -->
+  <div class="card">
+    <h2>3. Wallet — connect or create</h2>
+    <small class="hint" style="display:block; margin-bottom:10px;">
+      Two ways to get a wallet for the user. Both produce a standard EVM
+      address that Transak can deliver crypto to.
+    </small>
+    <div class="row">
+      <div>
+        <button onclick="connectMetaMask()">🦊 Connect MetaMask</button>
+        <small class="hint">
+          For crypto-savvy users. Make sure MetaMask is on the <b>Sepolia</b> testnet
+          before connecting (extension → networks → Show test networks → Sepolia).
+        </small>
+      </div>
+      <div>
+        <button class="secondary" onclick="openPrivyDemo()">✉️ Create wallet via Email (Privy preview)</button>
+        <small class="hint">
+          For users with no crypto knowledge. Opens Privy's homepage in a new
+          tab so you can see the email-based wallet flow. Real integration is
+          the frontend team's task.
+        </small>
+      </div>
+    </div>
+    <div class="gap">
+      <span id="connectStatus" class="status">No wallet connected</span>
+    </div>
+  </div>
+
+  <!-- ──────────────────────── Sign widget URL ──────────────────────── -->
+  <div class="card">
+    <h2>4. Sign widget URL</h2>
+    <div class="row">
+      <div>
+        <label>Wallet address (auto-fills when you connect; or paste manually)</label>
+        <input id="walletAddress" placeholder="0x… (connect a wallet above, or paste any Sepolia address)" />
+      </div>
+      <div>
+        <label>Crypto code</label>
+        <input id="sCrypto" value="ETH" />
+      </div>
+    </div>
+    <div class="row gap">
+      <div>
+        <label>Network</label>
+        <input id="sNetwork" value="ethereum" />
+      </div>
+      <div>
+        <label>Fiat amount (USD)</label>
+        <input id="sAmount" type="number" value="50" />
+      </div>
+    </div>
+    <div class="gap">
+      <button onclick="signUrl()">Sign widget URL</button>
+      <span id="signStatus"></span>
+    </div>
+    <pre id="signOut" class="gap">(signed URL + params will show here)</pre>
+    <div class="gap">
+      <button id="openWidget" class="secondary" disabled onclick="openWidget()">
+        Open Transak widget →
+      </button>
+      <small class="hint">
+        Opens the signed URL in a new tab. In sandbox, use Transak's test card.
+      </small>
+    </div>
+  </div>
+
+  <!-- ────────────────────────── Footer ────────────────────────── -->
+  <div class="card">
+    <h2>5. What "success" looks like</h2>
+    <ul style="margin:0; padding-left:20px; color:var(--muted);">
+      <li>Quote returns a `conversionPrice`, `cryptoAmount`, `quoteId`.</li>
+      <li>Sign-URL returns a full `widget_url` and a `signature`.</li>
+      <li>Opening the widget loads Transak's UI without "invalid signature" errors.</li>
+      <li>Completing a sandbox purchase fires a webhook to `/api/v1/wallet/webhooks/transak` and creates a row in `transak_orders` (check phpMyAdmin or `tinker`).</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+let lastSignedUrl = null;
+
+function el(id) { return document.getElementById(id); }
+function setStatus(id, text, ok) {
+  const e = el(id);
+  e.className = 'status ' + (ok ? 'ok' : 'err');
+  e.textContent = text;
+}
+
+// ─────────────────────────── Wallet connect ───────────────────────────
+// Two paths:
+//   - MetaMask: real EIP-1193 connect via window.ethereum.
+//   - Privy: not integrated here (frontend team's task). Button opens
+//     Privy's site so the manager sees the email-wallet UX in person.
+
+function shortAddr(a) {
+  return a ? `${a.slice(0,6)}…${a.slice(-4)}` : '';
+}
+
+async function connectMetaMask() {
+  if (!window.ethereum) {
+    setStatus('connectStatus', 'MetaMask not detected. Install at metamask.io and refresh.', false);
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || !accounts.length) {
+      setStatus('connectStatus', 'MetaMask returned no accounts.', false);
+      return;
+    }
+    const addr = accounts[0];
+    el('walletAddress').value = addr;
+
+    // Best-effort nudge to Sepolia. Ignore failures — user can switch
+    // manually; we just want them on a testnet so Transak's sandbox
+    // delivers visible test ETH.
+    const SEPOLIA = '0xaa36a7'; // chain id 11155111
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: SEPOLIA }],
+      });
+    } catch (_) { /* user declined or chain not added — that's fine */ }
+
+    setStatus('connectStatus', `Connected: ${shortAddr(addr)}  (auto-filled below)`, true);
+  } catch (err) {
+    setStatus('connectStatus', 'Connection cancelled or failed: ' + (err.message || err), false);
+  }
+}
+
+function openPrivyDemo() {
+  window.open('https://www.privy.io/', '_blank', 'noopener,noreferrer');
+  alert(
+    'Privy is not integrated in this test page.\n\n' +
+    'In production, this button would open Privy\'s email-login modal:\n' +
+    '  1. User enters their email\n' +
+    '  2. Privy sends a magic link\n' +
+    '  3. A wallet is auto-created via MPC\n' +
+    '  4. The wallet address auto-fills below\n\n' +
+    'Privy\'s site has been opened in a new tab so you can see the UX.'
+  );
+}
+
+async function call(path, method, body) {
+  const base = el('apiBase').value.replace(/\/+$/, '');
+  // Strip ALL whitespace from the JWT — pasting a long token from a chat
+  // message often introduces soft-wrap newlines, and fetch() refuses to
+  // send a request whose header value contains a newline.
+  const jwt  = el('jwt').value.replace(/\s+/g, '');
+  try {
+    const res = await fetch(base + path, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept':       'application/json',
+        ...(jwt ? { 'Authorization': 'Bearer ' + jwt } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch { json = { raw: text }; }
+    return { ok: res.ok, status: res.status, body: json };
+  } catch (err) {
+    // Surface fetch-level errors (network, invalid header, CORS) to the UI
+    // instead of just dumping to the console.
+    return {
+      ok: false,
+      status: 0,
+      body: { error: 'fetch failed: ' + (err && err.message ? err.message : String(err)) },
+    };
+  }
+}
+
+async function getQuote() {
+  setStatus('quoteStatus', 'Loading…', true);
+  const params = new URLSearchParams({
+    cryptoCurrency: el('qCrypto').value,
+    network:        el('qNetwork').value,
+    fiatCurrency:   el('qFiat').value,
+    paymentMethod:  el('qPayMethod').value,
+    fiatAmount:     el('qAmount').value,
+    isBuyOrSell:    el('qSide').value,
+  });
+  const r = await call('/transak/quote?' + params, 'GET');
+  el('quoteOut').textContent = JSON.stringify(r.body, null, 2);
+  setStatus('quoteStatus', r.ok ? `OK (${r.status})` : `Error (${r.status})`, r.ok);
+}
+
+async function signUrl() {
+  setStatus('signStatus', 'Signing…', true);
+  const r = await call('/transak/sign-url', 'POST', {
+    walletAddress:      el('walletAddress').value,
+    cryptoCurrencyCode: el('sCrypto').value,
+    network:            el('sNetwork').value,
+    fiatAmount:         Number(el('sAmount').value),
+    fiatCurrency:       'USD',
+  });
+  el('signOut').textContent = JSON.stringify(r.body, null, 2);
+  setStatus('signStatus', r.ok ? `OK (${r.status})` : `Error (${r.status})`, r.ok);
+  if (r.ok && r.body && r.body.data && r.body.data.widget_url) {
+    lastSignedUrl = r.body.data.widget_url;
+    el('openWidget').disabled = false;
+  } else {
+    lastSignedUrl = null;
+    el('openWidget').disabled = true;
+  }
+}
+
+function openWidget() {
+  if (!lastSignedUrl) return;
+  window.open(lastSignedUrl, '_blank', 'noopener,noreferrer');
+}
+</script>
+</body>
+</html>

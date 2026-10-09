@@ -1,0 +1,11 @@
+{
+    "name": "Services",
+    "alias": "services",
+    "description": "Shared application services and utilities",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Services\\Providers\\ServicesServiceProvider"
+    ],
+    "files": []
+}

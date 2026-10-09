@@ -1,0 +1,14 @@
+node_modules/
+vendor/
+.next/
+build/
+dist/
+.env
+.env.*
+.gradle/
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+.DS_Store
+*.log

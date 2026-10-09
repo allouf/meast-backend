@@ -1,0 +1,618 @@
+{
+	"info": {
+		"_postman_id": "e5f6a7b8-milestone-phases-meast-0001",
+		"name": "Meast — Milestone Order Phases",
+		"description": "Per-phase **milestone package orders** — pay, start, deliver, revise, and accept one phase at a time with a **cursor** (`current_phase_id`).\n\n**Base path:** `{{base_url}}/api/v1`\n\n**Prerequisites**\n1. Provider: create & activate a milestone template (`Meast — Provider Milestones` collection).\n2. Buyer: place order with `orderable_type: milestone_template` (see **Setup** folder).\n3. Run phase requests only on the **cursor** phase (`cursor.phase_id` / `is_cursor: true` in `phases[]`).\n\n**Phase execution status:** `PENDING_PAYMENT` → `IN_PROGRESS` → `DELIVERED` → `COMPLETED` (optional `IN_REVISION`).\n\n**Payment status (per phase):** `unpaid` → `in_escrow` (after pay) → `paid` (after accept).\n\n**Cursor actions** (`cursor.action`): `pay` | `start` | `deliver` | `review` | `deliver_revision` | `none`\n\n**Variables (auto-set by tests):**\n- `service_order_id` — milestone order id\n- `order_phase_id` — cursor phase id from `GET show`\n- `milestone_template_id` — template id for create order\n- `revision_id` — from phase revision response\n- `delivery_version` — usually `1` for first delivery\n\n**Do not use** order-level `provider-orders/start`, `deliver`, or buyer `revisions` on milestone orders — use phase endpoints in this collection.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000" },
+		{ "key": "user_token", "value": "" },
+		{ "key": "provider_token", "value": "" },
+		{ "key": "milestone_template_id", "value": "1" },
+		{ "key": "service_order_id", "value": "1" },
+		{ "key": "order_phase_id", "value": "1" },
+		{ "key": "revision_id", "value": "1" },
+		{ "key": "delivery_version", "value": "1" }
+	],
+	"item": [
+		{
+			"name": "Setup",
+			"description": "Discover template, create milestone order, sync cursor phase id.",
+			"item": [
+				{
+					"name": "Browse milestone packages (public)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  const list = (json.data && json.data.services) || [];",
+									"  if (list[0] && list[0].id) {",
+									"    pm.collectionVariables.set('milestone_template_id', list[0].id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/services?orderable_type=milestone_template&per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "services"],
+							"query": [
+								{ "key": "orderable_type", "value": "milestone_template" },
+								{ "key": "per_page", "value": "15" },
+								{ "key": "search", "value": "", "disabled": true },
+								{ "key": "delivery_model", "value": "", "disabled": true }
+							]
+						},
+						"description": "Public browse. Sets `milestone_template_id` from first result."
+					}
+				},
+				{
+					"name": "Show milestone package (public)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  const d = json.data;",
+									"  if (d && d.id) pm.collectionVariables.set('milestone_template_id', d.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{base_url}}/api/v1/services/show/{{milestone_template_id}}?orderable_type=milestone_template",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "services", "show", "{{milestone_template_id}}"],
+							"query": [{ "key": "orderable_type", "value": "milestone_template" }]
+						},
+						"description": "Template detail with roadmap `services[]` (template lines, not order phases)."
+					}
+				},
+				{
+					"name": "Create milestone order (buyer)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const json = pm.response.json();",
+									"  const d = json.data;",
+									"  if (d && d.id) pm.collectionVariables.set('service_order_id', d.id);",
+									"  if (d && d.cursor && d.cursor.phase_id) {",
+									"    pm.collectionVariables.set('order_phase_id', d.cursor.phase_id);",
+									"  } else if (d && d.phases && d.phases.length) {",
+									"    const cursor = d.phases.find(p => p.is_cursor) || d.phases[0];",
+									"    if (cursor && cursor.id) pm.collectionVariables.set('order_phase_id', cursor.id);",
+									"  }",
+									"  pm.test('Orderable is milestone_template', () => {",
+									"    pm.expect(d.orderable_type).to.eql('milestone_template');",
+									"  });",
+									"  pm.test('Phases cloned', () => {",
+									"    pm.expect(d.phases).to.be.an('array').that.is.not.empty;",
+									"  });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderable_type\": \"milestone_template\",\n  \"orderable_id\": {{milestone_template_id}},\n  \"notes\": \"Start with Discovery phase after I pay.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/service-orders",
+						"description": "Creates order + clones template lines to `service_offer_order_phases`. First phase is cursor with `PENDING_PAYMENT`."
+					}
+				},
+				{
+					"name": "Show order — sync cursor (buyer)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const syncCursor = (d) => {",
+									"  if (d.cursor && d.cursor.phase_id) {",
+									"    pm.collectionVariables.set('order_phase_id', d.cursor.phase_id);",
+									"  }",
+									"  if (d.phases) {",
+									"    const cursor = d.phases.find(p => p.is_cursor);",
+									"    if (cursor) pm.collectionVariables.set('order_phase_id', cursor.id);",
+									"  }",
+									"};",
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  syncCursor(d);",
+									"  pm.test('Has cursor', () => pm.expect(d.cursor).to.be.an('object'));",
+									"  pm.test('Has phases array', () => pm.expect(d.phases).to.be.an('array'));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/show/{{service_order_id}}",
+						"description": "Returns `phases[]`, `cursor` (`phase_id`, `action`, `status`, `payment_status`). Run before each phase action to refresh `order_phase_id`."
+					}
+				},
+				{
+					"name": "Show order — sync cursor (provider)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  if (d.cursor && d.cursor.phase_id) {",
+									"    pm.collectionVariables.set('order_phase_id', d.cursor.phase_id);",
+									"  }",
+									"  if (d.phases) {",
+									"    const cursor = d.phases.find(p => p.is_cursor);",
+									"    if (cursor) pm.collectionVariables.set('order_phase_id', cursor.id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/provider-orders/show/{{service_order_id}}",
+						"description": "Provider view of same order with `phases` and `cursor`."
+					}
+				}
+			]
+		},
+		{
+			"name": "Buyer — Phase actions",
+			"description": "Pay, accept, or request revision on the **cursor** phase only.",
+			"item": [
+				{
+					"name": "Pay current phase",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  const phase = d.phases && d.phases.find(p => p.is_cursor);",
+									"  if (phase) {",
+									"    pm.test('Phase funded', () => pm.expect(phase.payment_status).to.eql('in_escrow'));",
+									"    pm.test('Cursor action is start', () => pm.expect(d.cursor.action).to.eql('start'));",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/phases/{{order_phase_id}}/pay",
+						"description": "Creates phase escrow (manual gateway, status PAID). Phase stays `PENDING_PAYMENT` until provider starts. `cursor.action` becomes `start`."
+					}
+				},
+				{
+					"name": "Accept delivered phase",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  if (d.cursor && d.cursor.phase_id) {",
+									"    pm.collectionVariables.set('order_phase_id', d.cursor.phase_id);",
+									"  }",
+									"  pm.test('Response has phases', () => pm.expect(d.phases).to.be.an('array'));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/phases/{{order_phase_id}}/accept",
+						"description": "Phase → `COMPLETED`, escrow → RELEASED. Cursor advances to next phase (`PENDING_PAYMENT`) or order → `COMPLETED` if last phase."
+					}
+				},
+				{
+					"name": "Request phase revision",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  const revs = d.revisions || [];",
+									"  const pending = revs.find(r => r.status === 'PENDING');",
+									"  if (pending && pending.id) pm.collectionVariables.set('revision_id', pending.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"delivery_version\": {{delivery_version}},\n  \"notes\": \"Please adjust colors per the brand guide.\",\n  \"request_type\": \"STANDARD\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/phases/{{order_phase_id}}/revisions",
+						"description": "Only when phase is `DELIVERED` and within `revision_window_days`. Order → `REVISION_REQUESTED`. Provider must accept before redelivery."
+					}
+				},
+				{
+					"name": "Request phase revision (multipart)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "delivery_version", "value": "{{delivery_version}}", "type": "text" },
+								{ "key": "notes", "value": "See attached markup.", "type": "text" },
+								{ "key": "request_type", "value": "STANDARD", "type": "text" },
+								{
+									"key": "attachments[]",
+									"type": "file",
+									"src": "",
+									"disabled": true,
+									"description": "jpg, jpeg, png, pdf — max 10 files"
+								}
+							]
+						},
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/phases/{{order_phase_id}}/revisions",
+						"description": "Multipart variant with optional `attachments[]`."
+					}
+				}
+			]
+		},
+		{
+			"name": "Provider — Phase actions",
+			"description": "Start and deliver the **cursor** phase after buyer payment.",
+			"item": [
+				{
+					"name": "Start current phase",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  const phase = d.phases && d.phases.find(p => p.is_cursor);",
+									"  if (phase) {",
+									"    pm.test('Phase in progress', () => pm.expect(phase.status).to.eql('IN_PROGRESS'));",
+									"    pm.test('Cursor action is deliver', () => pm.expect(d.cursor.action).to.eql('deliver'));",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/provider-orders/{{service_order_id}}/phases/{{order_phase_id}}/start",
+						"description": "Requires phase paid (`payment_status: in_escrow`). Sets `started_at`, `deadline`, phase → `IN_PROGRESS`."
+					}
+				},
+				{
+					"name": "Deliver current phase",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  const phase = d.phases && d.phases.find(p => p.is_cursor);",
+									"  if (phase) {",
+									"    pm.test('Phase delivered', () => pm.expect(phase.status).to.eql('DELIVERED'));",
+									"    pm.test('Cursor action is review', () => pm.expect(d.cursor.action).to.eql('review'));",
+									"    if (phase.deliveries && phase.deliveries[0]) {",
+									"      pm.collectionVariables.set('delivery_version', phase.deliveries[0].version);",
+									"    }",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "message", "value": "Phase deliverables attached.", "type": "text" },
+								{
+									"key": "attachments[]",
+									"type": "file",
+									"src": "",
+									"disabled": true,
+									"description": "jpg, jpeg, png, pdf, doc, docx, zip — max 10MB each"
+								}
+							]
+						},
+						"url": "{{base_url}}/api/v1/provider-orders/{{service_order_id}}/phases/{{order_phase_id}}/deliver",
+						"description": "Phase → `DELIVERED`. Sets `delivery_version` from first delivery in response. Buyer can accept or request revision."
+					}
+				},
+				{
+					"name": "Redeliver after accepted revision",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "message", "value": "Revision addressed — updated files attached.", "type": "text" },
+								{
+									"key": "attachments[]",
+									"type": "file",
+									"src": "",
+									"disabled": true
+								}
+							]
+						},
+						"url": "{{base_url}}/api/v1/provider-orders/{{service_order_id}}/phases/{{order_phase_id}}/deliver",
+						"description": "Use when phase is `IN_REVISION` and provider already **accepted** the revision request (`cursor.action: deliver_revision`)."
+					}
+				}
+			]
+		},
+		{
+			"name": "Provider — Phase revisions",
+			"description": "Respond to buyer revision requests on a phase.",
+			"item": [
+				{
+					"name": "List order revisions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  const revs = json.data && json.data.revisions ? json.data.revisions : [];",
+									"  const pending = revs.find(r => r.status === 'PENDING');",
+									"  if (pending && pending.id) pm.collectionVariables.set('revision_id', pending.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/provider-orders/{{service_order_id}}/revisions",
+						"description": "Lists revisions for the order (includes phase-linked revisions)."
+					}
+				},
+				{
+					"name": "Accept phase revision",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/provider-orders/revisions/{{revision_id}}/accept",
+						"description": "Phase → `IN_REVISION`. Provider can then **Deliver current phase** again."
+					}
+				},
+				{
+					"name": "Reject phase revision",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rejection_reason\": \"Delivered scope matches the agreed phase requirements.\"\n}"
+						},
+						"url": "{{base_url}}/api/v1/provider-orders/revisions/{{revision_id}}/reject",
+						"description": "Phase returns to `DELIVERED`; buyer may accept the phase."
+					}
+				}
+			]
+		},
+		{
+			"name": "Full flow (one phase)",
+			"description": "Run in order for a single cursor phase: show → pay → start → deliver → accept. Repeat for each phase in the package.",
+			"item": [
+				{
+					"name": "1. Show order (sync cursor)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/show/{{service_order_id}}"
+					}
+				},
+				{
+					"name": "2. Pay phase (buyer)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/phases/{{order_phase_id}}/pay"
+					}
+				},
+				{
+					"name": "3. Start phase (provider)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/provider-orders/{{service_order_id}}/phases/{{order_phase_id}}/start"
+					}
+				},
+				{
+					"name": "4. Deliver phase (provider)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{provider_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "message", "value": "Phase 1 complete.", "type": "text" }
+							]
+						},
+						"url": "{{base_url}}/api/v1/provider-orders/{{service_order_id}}/phases/{{order_phase_id}}/deliver"
+					}
+				},
+				{
+					"name": "5. Accept phase (buyer)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "POST",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/{{service_order_id}}/phases/{{order_phase_id}}/accept"
+					}
+				},
+				{
+					"name": "6. Show order (next cursor)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const d = pm.response.json().data;",
+									"  if (d.cursor && d.cursor.phase_id) {",
+									"    pm.collectionVariables.set('order_phase_id', d.cursor.phase_id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{ "key": "token", "value": "{{user_token}}", "type": "string" }]
+						},
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": "{{base_url}}/api/v1/service-orders/show/{{service_order_id}}",
+						"description": "After accept, cursor moves to next phase. Re-run steps 2–5 for each remaining phase."
+					}
+				}
+			]
+		}
+	]
+}
